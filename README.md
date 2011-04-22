@@ -29,7 +29,7 @@ Everything should be in place now. Every time you submit a theme update you shou
 	
 This way, your Clients will see an update notification on the WordPress admin panel informing them that there's a new version available and they should update.
 
-**NOTE:** when you submit theme updates make sure to update the theme version in the **style.css** file in the root of your theme. 
+**NOTE:** when you submit theme updates make sure to update the theme version number in the **style.css** file. This file is in the root of your theme and the "Version" is the value used for comparison.
 
 ## Screenshot
 

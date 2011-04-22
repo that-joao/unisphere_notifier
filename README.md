@@ -2,7 +2,9 @@
 
 This is a simple WordPress theme update notifier that will provide your theme Buyers with a notification every time you issue a theme update.
 
-It's a very simple script that requires and assumes you have an XML file in your own server that serves as an endpoint for the script to check what the latest version of the theme is in order to compare with the current version of the theme installed in the Client's server.
+It's a very simple script that requires and assumes you have an XML file in your own server. This XML file serves as an endpoint for the script to check what the latest version of the theme is, and compares it with the current version of the theme installed in the Client's server.
+
+One of the script **requirements** is that the version number are **floats**. Versions like 1.0, 1.1, 2.3 are acceptable and required.
 
 ## Installation
 
@@ -29,4 +31,4 @@ This way, your Clients will see an update notification on the WordPress admin pa
 
 ## Screenshot
 
-![theme update notifier](http://screencast.com/t/6613PkXAo)
+![theme update notifier](http://content.screencast.com/users/unispheredesign/folders/Jing/media/589c4a03-9155-4af9-8769-608245f12ba4/00000107.png)

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<notifier>
+	<latest>1.0</latest>
+	<changelog>
+<![CDATA[
+<h4>Version 1.0</h4>
+<ul>
+<li>Initial theme version.</li>
+</ul>
+]]>
+	</changelog>
+</notifier>

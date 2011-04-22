@@ -4,7 +4,7 @@
  *   Provides a notification to the user everytime            *
  *   your WordPress theme is updated                          *
  *                                                            *
- *   Author: Jo‹o Araœjo                                      *
+ *   Author: Joao Araujo                                      *
  *   Profile: http://themeforest.net/user/unisphere           *
  *   Follow me: http://twitter.com/unispheredesign            *
  *                                                            *

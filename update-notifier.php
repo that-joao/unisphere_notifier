@@ -13,10 +13,10 @@
  
 
 // Constants for the theme name, folder and remote XML url
-define( 'NOTIFIER_THEME_NAME', 'JohnDoe' ); // The theme name
-define( 'NOTIFIER_THEME_FOLDER_NAME', 'johndoe' ); // The theme folder name
-define( 'NOTIFIER_XML_FILE', 'http://www.yourdomain.com/johndoe/notifier.xml' ); // The remote notifier XML file containing the latest version of the theme and changelog
-define( 'NOTIFIER_CACHE_INTERVAL', 21600 ); // The time interval for the remote XML cache in the database (21600 seconds = 6 hours)
+define( 'NOTIFIER_THEME_NAME', 'Compra' ); // The theme name
+define( 'NOTIFIER_THEME_FOLDER_NAME', 'Compra' ); // The theme folder name
+define( 'NOTIFIER_XML_FILE', 'http://www.mintthemes.com/notifier/compra-notifier.xml' ); // The remote notifier XML file containing the latest version of the theme and changelog
+define( 'NOTIFIER_CACHE_INTERVAL', 2 ); // The time interval for the remote XML cache in the database (21600 seconds = 6 hours)
 
 
 
@@ -26,7 +26,11 @@ function update_notifier_menu() {
 	    $xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
 		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
 		
-		if( (float)$xml->latest > (float)$theme_data['Version']) { // Compare current theme version with the remote XML version
+		//strips the decimal points out of numbers that have more than 1. This makes the comparison work for any type of numbering system.
+		$xml_latest = str_replace(".", "", $xml->latest);
+		$current_latest = str_replace(".", "", $theme_data['Version']);
+
+		if((float)$xml_latest > (float)$current_latest) { // Compare current theme version with the remote XML version
 			add_dashboard_page( NOTIFIER_THEME_NAME . ' Theme Updates', NOTIFIER_THEME_NAME . ' <span class="update-plugins count-1"><span class="update-count">New Updates</span></span>', 'administrator', 'theme-update-notifier', 'update_notifier');
 		}
 	}	

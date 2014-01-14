@@ -2,140 +2,180 @@
 /**************************************************************
  *                                                            *
  *   Provides a notification to the user everytime            *
- *   your WordPress theme is updated                          *
+ *   your WordPress Theme is updated                          *
+ *															  *
+ *	 Based on the script by Unisphere:						  *
+ *   https://github.com/unisphere/unisphere_notifier          *
  *                                                            *
- *   Author: Joao Araujo                                      *
- *   Profile: http://themeforest.net/user/unisphere           *
- *   Follow me: http://twitter.com/unispheredesign            *
+ *   Author: Jeton Ramadani                                   *
+ *   Profile: http://themeforest.net/user/jetonr              *
+ *   Follow me: http://twitter.com/jetonr		              *
  *                                                            *
  **************************************************************/
- 
- 
 
-// Constants for the theme name, folder and remote XML url
-define( 'NOTIFIER_THEME_NAME', 'JohnDoe' ); // The theme name
-define( 'NOTIFIER_THEME_FOLDER_NAME', 'johndoe' ); // The theme folder name
-define( 'NOTIFIER_XML_FILE', 'http://www.yourdomain.com/johndoe/notifier.xml' ); // The remote notifier XML file containing the latest version of the theme and changelog
-define( 'NOTIFIER_CACHE_INTERVAL', 21600 ); // The time interval for the remote XML cache in the database (21600 seconds = 6 hours)
+/**************** CHAGNE THE FOLLOWING VALUES *****************/
 
+define( 'NOTIFIER_XML_FILE', 'http://www.yourdomain.com/johndoe/notifier.xml' );  // path to notifier.xml
+define( 'NOTIFIER_CACHE_INTERVAL', 6 ); // interval to refresh the xml in database with remote XML (default 6 hours)
+define( 'NOTIFIER_THEMEFOREST_USERNAME', 'yourthemeforestusername' ); // your themeforest username
 
+/**************** DO NOT EDIT AFTER THIS LINE *****************/
 
-// Adds an update notification to the WordPress Dashboard menu
-function update_notifier_menu() {  
-	if (function_exists('simplexml_load_string')) { // Stop if simplexml_load_string funtion isn't available
-	    $xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
-		
-		if( (float)$xml->latest > (float)$theme_data['Version']) { // Compare current theme version with the remote XML version
-			add_dashboard_page( NOTIFIER_THEME_NAME . ' Theme Updates', NOTIFIER_THEME_NAME . ' <span class="update-plugins count-1"><span class="update-count">New Updates</span></span>', 'administrator', 'theme-update-notifier', 'update_notifier');
-		}
-	}	
-}
-add_action('admin_menu', 'update_notifier_menu');  
-
-
-
-// Adds an update notification to the WordPress 3.1+ Admin Bar
-function update_notifier_bar_menu() {
-	if (function_exists('simplexml_load_string')) { // Stop if simplexml_load_string funtion isn't available
-		global $wp_admin_bar, $wpdb;
+/* Add Dashboard page and notice for theme update */ 
+function update_notifier_menu() {
 	
-		if ( !is_super_admin() || !is_admin_bar_showing() ) // Don't display notification in admin bar if it's disabled or the current user isn't an administrator
-		return;
+	$xml = get_latest_theme_version();
+	if( isset( $xml->latest )    ? $latest_ver = $xml->latest    : $latest_ver  = false );  
+	if( isset( $xml->changelog ) ? $changelog  = $xml->changelog : $changelog   = false );
+
+	$theme_data 	= wp_get_theme(); // since WordPress 3.4.0
+	$theme_ver 	    = $theme_data->get('Version');
+	$dashboard_slug = sanitize_title( $theme_data .'-update' );
+	$how_to_page    = admin_url( 'themes.php?page='. $dashboard_slug );
+	$diss_notice    = get_user_meta( get_current_user_id(), '_upnf_update_hide_notice', true );
+	$comparison		= version_compare( $latest_ver, $theme_ver );
 		
-		$xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+	if( ( $comparison == 1 ) && ( !$diss_notice ) ) {
+		echo '<div class="updated ntf_hide"><p>There is a new version of the <strong>'. $theme_data .'</strong> theme available. You have version<strong> '. $theme_ver .' </strong>installed. Update to version <strong>'. $latest_ver. '</strong></p>';
+		echo '<p><strong><a href='.$how_to_page.'>Update Instructions</a> | <a class="dismiss-notice" href="' .  esc_url( add_query_arg( 'upnf_update_nag', wp_create_nonce( 'upnf_update_nag' ) ) ) . '" target="_parent">Dismiss this notice</a></strong></p>';
+		echo '</div>';
+	}
 	
-		if( (float)$xml->latest > (float)$theme_data['Version']) { // Compare current theme version with the remote XML version
-			$wp_admin_bar->add_menu( array( 'id' => 'update_notifier', 'title' => '<span>' . NOTIFIER_THEME_NAME . ' <span id="ab-updates">New Updates</span></span>', 'href' => get_admin_url() . 'index.php?page=theme-update-notifier' ) );
-		}
+	if( $comparison == 1 ) {
+		add_theme_page($theme_data .'Theme Updates', 'Theme Updates <span class="update-plugins count-1"><span class="update-count">1</span></span>', 'administrator', $dashboard_slug, 'update_notifier');
 	}
 }
-add_action( 'admin_bar_menu', 'update_notifier_bar_menu', 1000 );
+add_action('admin_menu', 'update_notifier_menu');
 
+/* Hide theme update notice if user dissmised */
+function update_notifier_hide_notice() {
+    if ( ! isset( $_GET['upnf_update_nag'] ) ) {
+        return;
+    }
+    // Check nonce
+    check_admin_referer( 'upnf_update_nag', 'upnf_update_nag' );
+ 
+    // updated user meta to indicate dismissed notice
+    update_user_meta( get_current_user_id(), '_upnf_update_hide_notice', 1 );
+}
+add_action( 'admin_init', 'update_notifier_hide_notice' );
 
-
-// The notifier page
-function update_notifier() { 
-	$xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-	$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css ?>
+/* Update Information Page */
+function update_notifier() {
 	
+	$xml = get_latest_theme_version();
+	if( isset( $xml->latest )    ? $latest_ver = $xml->latest    : $latest_ver = false );  
+	if( isset( $xml->changelog ) ? $changelog  = $xml->changelog : $changelog  = false );
+	  
+	$theme_data  = wp_get_theme(); 					// since WordPress 3.4.0
+	$theme_ver   = $theme_data->get('Version'); 	// Theme Version
+	$theme_URI   = $theme_data->get('ThemeURI'); 	// Theme Demo URL
+	$author_name = $theme_data->get('Author');  	// Theme Author Name
+	$author_URI  = $theme_data->get('AuthorURI'); 	// Theme Author Url 
+	$themeFolder = get_template(); 					// Template Folder Name
+
+	add_thickbox(); // Add Thickbox to open Videos and images
+?>	
 	<style>
-		.update-nag { display: none; }
-		#instructions {max-width: 670px;}
-		h3.title {margin: 30px 0 0 0; padding: 30px 0 0 0; border-top: 1px solid #ddd;}
+	.ntf_border { border-right: 1px solid #e5e5e5; };
+	.ntf_center { margin: 0 auto; text-align: center; }
+	.ntf_hide   { display: none; }
 	</style>
-
-	<div class="wrap">
-	
-		<div id="icon-tools" class="icon32"></div>
-		<h2><?php echo NOTIFIER_THEME_NAME ?> Theme Updates</h2>
-	    <div id="message" class="updated below-h2"><p><strong>There is a new version of the <?php echo NOTIFIER_THEME_NAME; ?> theme available.</strong> You have version <?php echo $theme_data['Version']; ?> installed. Update to version <?php echo $xml->latest; ?>.</p></div>
-
-		<img style="float: left; margin: 0 20px 20px 0; border: 1px solid #ddd;" src="<?php echo get_bloginfo( 'template_url' ) . '/screenshot.png'; ?>" />
-		
-		<div id="instructions">
-		    <h3>Update Download and Instructions</h3>
-		    <p><strong>Please note:</strong> make a <strong>backup</strong> of the Theme inside your WordPress installation folder <strong>/wp-content/themes/<?php echo NOTIFIER_THEME_FOLDER_NAME; ?>/</strong></p>
-		    <p>To update the Theme, login to <a href="http://www.themeforest.net/">ThemeForest</a>, head over to your <strong>downloads</strong> section and re-download the theme like you did when you bought it.</p>
-		    <p>Extract the zip's contents, look for the extracted theme folder, and after you have all the new files upload them using FTP to the <strong>/wp-content/themes/<?php echo NOTIFIER_THEME_FOLDER_NAME; ?>/</strong> folder overwriting the old ones (this is why it's important to backup any changes you've made to the theme files).</p>
-		    <p>If you didn't make any changes to the theme files, you are free to overwrite them with the new ones without the risk of losing theme settings, pages, posts, etc, and backwards compatibility is guaranteed.</p>
-		</div>
-	    
-	    <h3 class="title">Changelog</h3>
-	    <?php echo $xml->changelog; ?>
-
-	</div>
     
+	<div class="wrap">
+    	<div id="icon-themes" class="icon32"></div>
+		<h2>Updating <?php echo $theme_data; ?> Theme</h2>
+		<table class="wp-list-table widefat" cellspacing="0">
+          <thead>
+            <tr>
+              <th scope="col" class="ntf_border"><strong><?php echo $theme_data; ?> Screenshot</strong></th>
+              <th scope="col" class="ntf_border"><strong>Update Instructions</strong></th>
+              <th scope="col" class="ntf_border"><strong>Version <?php echo $latest_ver; ?> Changelog</strong></th>
+            </tr>
+          </thead>
+		  <tfoot>
+		    <tr>
+		      <th><?php echo $theme_data; ?> is Designed by <a href="<?php echo $author_URI; ?>" title="Visit author homepage" target="_blank"><?php echo $author_name; ?></a></th>
+              <th></th>
+              <th></th>
+            </tr>
+		  </tfoot>
+          <tbody id="the-list">
+          	<tr>
+              <td class="ntf_border ntf_center">
+                  <a href="<?php echo $theme_URI; ?>" title="Visit <?php echo $theme_data; ?> site" target="_blank">
+                  <img width="400" height="auto" src="<?php echo get_template_directory_uri() . '/screenshot.png'; ?>" />
+                  </a>
+              </td>
+              <td class="column-description desc ntf_border">
+             	  <h3>Method 1 - ( Automatic - The easy way )</h3>
+                  <ol>
+                      <li>Install and activate <a href="https://github.com/envato/envato-wordpress-toolkit/archive/master.zip">Envato WordPress Toolkit Plugin</a></li>
+                      <li><p>Login to your <a href="http://themeforest.net/?ref=<?php echo NOTIFIER_THEMEFOREST_USERNAME; ?>">Themeforest</a> account, go to <strong>Settings -> API Keys</strong>, select and copy your API Key ( <a href="http://i.imgur.com/Mfukg3C.jpg" title="How to Copy Envato API Key" class="thickbox">See Image</a> )</p></li>
+                      <li>Go to <strong>WP Admin -> Envato Toolkit plugin page</strong>, type in your username and paste the API key you copied in the previous step. Click Save Settings.</li>
+                  </ol>
+                  <p>Once have you filled in your envato marketplace username and  API key, all your purchased themes can be installed and updated on a single click. ( <a href="http://i.imgur.com/ZGzvanc.jpg" title="Envato WordPress Toolkit Plugin Page" class="thickbox">See Image</a> )</p>
+              	  <h3>Method 2 - ( Manual - The hard way )</h3>
+                  <p><strong>Please note:</strong> make a <strong>backup</strong> of the Theme inside your WordPress installation folder <strong>/wp-content/themes/<?php echo $themeFolder; ?>/</strong></p>
+                  <ol>
+                      <li><p>Login to your <a href="http://themeforest.net/?ref=<?php echo NOTIFIER_THEMEFOREST_USERNAME; ?>">Themeforest</a> account, head over to your <strong>downloads</strong> section and re-download the theme</p></li>
+                      <li>Make sure you've backed up your data via Tools > Export</li>
+                      <li>Switch Back to the default Theme (Twenty Twelve) momentarily</li>
+                      <li>Delete your current version of "<?php echo $theme_data; ?>". (this is why it's important to backup any changes you've made to the theme files)</li>
+                      <li>Install the Theme Via your Wordpress Dashboard. <a href="http://www.youtube.com/embed/q4iO0qxfN5g?feature=oembed&amp;showinfo=0&amp;iv_load_policy=3&amp;modestbranding=0&amp;nologo=1&amp;vq=large&amp;autoplay=1&amp;ps=docs&amp;wmode=opaque&amp;rel=0&amp;TB_iframe=true&width=800&height=500"  title="Theme Install via Wordpress Dashboard" class="thickbox">How to Install your Theme Video</a></li> 
+                  </ol>
+                  <p>If you didn't make any changes to the theme files, you are free to update withou risk of losing theme settings, pages, posts, and other content.</p>
+            </td>
+              <td class="column-description desc">
+				  <?php echo $changelog; ?>
+              </td>
+         	</tr>
+          </tbody>
+		</table>
+	</div>  
 <?php } 
 
+/* This function retrieves a remote xml file on my server to see if there's a new update */
+function get_latest_theme_version() {
+	
+	$notifier_xml    = NOTIFIER_XML_FILE;
+	$theme_data  	 = wp_get_theme(); // since WordPress 3.4.0
+	$notifier_name 	 = sanitize_title( $theme_data ) .'-notifier-cache'; // name for transients and options
+	$notifier_data 	 = get_transient( $notifier_name ); // read data from transient
+	
+	libxml_use_internal_errors(true); // !!!
+	
+	$xml_data 		 = simplexml_load_string( $notifier_data ); 
+	
+	// if transient expired will return false
+	if ( false === $notifier_data ) {
 
-
-// Get the remote XML file contents and return its data (Version and Changelog)
-// Uses the cached version if available and inside the time interval defined
-function get_latest_theme_version($interval) {
-	$notifier_file_url = NOTIFIER_XML_FILE;	
-	$db_cache_field = 'notifier-cache';
-	$db_cache_field_last_updated = 'notifier-cache-last-updated';
-	$last = get_option( $db_cache_field_last_updated );
-	$now = time();
-	// check the cache
-	if ( !$last || (( $now - $last ) > $interval) ) {
 		// cache doesn't exist, or is old, so refresh it
-		if( function_exists('curl_init') ) { // if cURL is available, use it...
-			$ch = curl_init($notifier_file_url);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HEADER, 0);
-			curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-			$cache = curl_exec($ch);
-			curl_close($ch);
-		} else {
-			$cache = file_get_contents($notifier_file_url); // ...if not, use the common file_get_contents()
+		$response 	   = wp_remote_get( $notifier_xml, array( 'sslverify' => false ) );
+		$notifier_data = wp_remote_retrieve_body( $response );
+		// if we cannot connect to xml use last update from options 
+		if ( is_wp_error($response) )	{
+			$notifier_data = get_option($notifier_name);
 		}
 		
-		if ($cache) {			
-			// we got good results	
-			update_option( $db_cache_field, $cache );
-			update_option( $db_cache_field_last_updated, time() );
-		} 
-		// read from the cache file
-		$notifier_data = get_option( $db_cache_field );
+		// Refresh xml_data with new xml file
+		$xml_data = simplexml_load_string($notifier_data); 
+		
+		// We have good response set transient and update option
+		if ( isset( $xml_data->latest ) ) {			
+			// we got good results
+			set_transient( $notifier_name, $notifier_data, NOTIFIER_CACHE_INTERVAL*60*60 );
+			update_option( $notifier_name, $notifier_data );
+		}
 	}
-	else {
-		// cache file is fresh enough, so read from it
-		$notifier_data = get_option( $db_cache_field );
+
+	if( isset( $xml_data->latest ) ) {
+		return $xml_data; // Process XML structure here
+	} else {
+		foreach(libxml_get_errors() as $error) {
+			error_log('Error parsing XML file: ' . $error->message);
+		}
 	}
-	
-	// Let's see if the $xml data was returned as we expected it to.
-	// If it didn't, use the default 1.0 as the latest version so that we don't have problems when the remote server hosting the XML file is down
-	if( strpos((string)$notifier_data, '<notifier>') === false ) {
-		$notifier_data = '<?xml version="1.0" encoding="UTF-8"?><notifier><latest>1.0</latest><changelog></changelog></notifier>';
-	}
-	
-	// Load the remote XML data into a variable and return it
-	$xml = simplexml_load_string($notifier_data); 
-	
-	return $xml;
 }
 
 ?>

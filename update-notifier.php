@@ -24,9 +24,15 @@ define( 'NOTIFIER_CACHE_INTERVAL', 21600 ); // The time interval for the remote 
 function update_notifier_menu() {  
 	if (function_exists('simplexml_load_string')) { // Stop if simplexml_load_string funtion isn't available
 	    $xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+	    if (function_exists('wp_get_theme')){ // Since WP 4.0
+			$theme_data = wp_get_theme(NOTIFIER_THEME_FOLDER_NAME); // Read theme current version from the style.css
+			$theme_version = $theme_data->Version;
+		} else {
+			$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+			$theme_version = $theme_data['Version'];
+		}
 		
-		if( (float)$xml->latest > (float)$theme_data['Version']) { // Compare current theme version with the remote XML version
+		if( (float)$xml->latest > (float)$theme_version) { // Compare current theme version with the remote XML version
 			add_dashboard_page( NOTIFIER_THEME_NAME . ' Theme Updates', NOTIFIER_THEME_NAME . ' <span class="update-plugins count-1"><span class="update-count">New Updates</span></span>', 'administrator', 'theme-update-notifier', 'update_notifier');
 		}
 	}	
@@ -44,9 +50,15 @@ function update_notifier_bar_menu() {
 		return;
 		
 		$xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+		if (function_exists('wp_get_theme')){ // Since WP 4.0
+			$theme_data = wp_get_theme(NOTIFIER_THEME_FOLDER_NAME); // Read theme current version from the style.css
+			$theme_version = $theme_data->Version;
+		} else {
+			$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+			$theme_version = $theme_data['Version'];
+		}
 	
-		if( (float)$xml->latest > (float)$theme_data['Version']) { // Compare current theme version with the remote XML version
+		if( (float)$xml->latest > (float)$theme_version) { // Compare current theme version with the remote XML version
 			$wp_admin_bar->add_menu( array( 'id' => 'update_notifier', 'title' => '<span>' . NOTIFIER_THEME_NAME . ' <span id="ab-updates">New Updates</span></span>', 'href' => get_admin_url() . 'index.php?page=theme-update-notifier' ) );
 		}
 	}
@@ -58,7 +70,13 @@ add_action( 'admin_bar_menu', 'update_notifier_bar_menu', 1000 );
 // The notifier page
 function update_notifier() { 
 	$xml = get_latest_theme_version(NOTIFIER_CACHE_INTERVAL); // Get the latest remote XML file on our server
-	$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css ?>
+	if (function_exists('wp_get_theme')){ // Since WP 4.0
+		$theme_data = wp_get_theme(NOTIFIER_THEME_FOLDER_NAME); // Read theme current version from the style.css
+		$theme_version = $theme_data->Version;
+	} else {
+		$theme_data = get_theme_data(TEMPLATEPATH . '/style.css'); // Read theme current version from the style.css
+		$theme_version = $theme_data['Version'];
+	} ?>
 	
 	<style>
 		.update-nag { display: none; }
@@ -70,7 +88,7 @@ function update_notifier() {
 	
 		<div id="icon-tools" class="icon32"></div>
 		<h2><?php echo NOTIFIER_THEME_NAME ?> Theme Updates</h2>
-	    <div id="message" class="updated below-h2"><p><strong>There is a new version of the <?php echo NOTIFIER_THEME_NAME; ?> theme available.</strong> You have version <?php echo $theme_data['Version']; ?> installed. Update to version <?php echo $xml->latest; ?>.</p></div>
+	    <div id="message" class="updated below-h2"><p><strong>There is a new version of the <?php echo NOTIFIER_THEME_NAME; ?> theme available.</strong> You have version <?php echo $theme_version; ?> installed. Update to version <?php echo $xml->latest; ?>.</p></div>
 
 		<img style="float: left; margin: 0 20px 20px 0; border: 1px solid #ddd;" src="<?php echo get_bloginfo( 'template_url' ) . '/screenshot.png'; ?>" />
 		
